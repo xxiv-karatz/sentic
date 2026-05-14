@@ -1,127 +1,238 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sentic — AI Sentiment Analysis & Insights</title>
-    <meta
-      name="description"
-      content="Analyze customer feedback, reviews, and social posts. Get sentiment scores, themes, and actionable insights powered by DeepSeek."
-    />
+    <meta name="description" content="Analyze customer feedback, reviews, and social posts. Get sentiment scores, themes, and actionable insights." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="favicon.png" />
   </head>
   <body>
-    <header class="site-header">
-      <div class="container row">
+
+    <header class="site-header" role="banner">
+      <div class="container header-inner">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true">✦</div>
+          <span class="brand-mark" aria-hidden="true">✦</span>
           <div>
-            <div class="brand-name">Sentic</div>
-            <div class="brand-tag">Sentiment · Insights</div>
+            <span class="brand-name">Sentic</span>
+            <span class="brand-tag">Sentiment · Insights</span>
           </div>
         </div>
+
+        <nav class="header-controls" aria-label="Site controls">
+          <button
+            id="themeToggle"
+            class="theme-btn"
+            aria-label="Toggle dark mode"
+            title="Toggle light/dark mode"
+          >
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
+        </nav>
       </div>
     </header>
 
     <main>
-      <section class="container hero">
-        <h1>
-          Read the room.<br />
-          <span class="italic muted">Then act on it.</span>
-        </h1>
-        <p class="lede">
-          Drop in reviews, survey responses, tweets, or transcripts — one per line.
-          Get per-item sentiment scores, recurring themes, and a written insights report.
-        </p>
+
+      <!-- Hero -->
+      <section class="hero" aria-labelledby="hero-heading">
+        <div class="container hero-inner">
+          <h1 id="hero-heading">
+            Read the room.<br />
+            <em class="muted">Then act on it.</em>
+          </h1>
+          <p class="lede">
+            Drop in reviews, survey responses, tweets, or transcripts — one per line.
+            Get per-item sentiment scores, recurring themes, and a written insights report.
+          </p>
+        </div>
       </section>
 
-      <section class="container">
+      <!-- Input panel -->
+      <section class="container" aria-labelledby="input-heading">
         <article class="card panel">
           <header class="panel-head">
-            <div class="eyebrow">Input · one entry per line</div>
-            <div>
-              <label for="sampleSelect" class="visually-hidden">Choose a sample dataset</label>
-              <select id="sampleSelect" style="background: transparent; border: 1px solid var(--rule); padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--muted);">
-                <option value="default">📋 Default sample</option>
-                <option value="ecommerce">🛍️ E‑commerce reviews</option>
-                <option value="software">💻 Software feedback</option>
-                <option value="hotel">🏨 Hotel reviews</option>
-                <option value="employee">🧑‍💼 Employee survey</option>
-                <option value="social">📱 Social media comments</option>
-              </select>
-            </div>
+            <h2 id="input-heading" class="eyebrow">Input · one entry per line</h2>
+            <label for="sampleSelect" class="visually-hidden">Choose a sample dataset</label>
+            <select id="sampleSelect">
+              <option value="default"> Default sample</option>
+              <option value="ecommerce"> E‑commerce reviews</option>
+              <option value="software"> Software feedback</option>
+              <option value="hotel"> Hotel reviews</option>
+              <option value="employee"> Employee survey</option>
+              <option value="social"> Social media comments</option>
+            </select>
           </header>
+
           <textarea
             id="input"
+            aria-label="Text entries to analyze, one per line"
             placeholder="Paste reviews, feedback, or social posts. One per line."
           ></textarea>
+
           <footer class="panel-foot">
-            <div class="muted small" id="counter">0 entries</div>
-            <button id="run" class="btn-primary">Run analysis →</button>
+            <output id="counter" for="input" class="muted small">0 entries</output>
+            <button id="run" class="btn-primary" type="button">Run analysis →</button>
           </footer>
         </article>
       </section>
 
-      <section class="container" id="results" hidden>
-        <ul class="metrics" style="list-style: none; padding: 0;">
-          <li class="card metric">
-            <div class="eyebrow">Overall Sentiment</div>
-            <div class="metric-value" id="m-sent"></div>
-          </li>
-          <li class="card metric">
-            <div class="eyebrow">Avg Score (-1 to 1)</div>
-            <div class="metric-value" id="m-score"></div>
-          </li>
-          <li class="card metric">
-            <div class="eyebrow">Entries Analyzed</div>
-            <div class="metric-value" id="m-count"></div>
-          </li>
-        </ul>
+      <!-- Results dashboard -->
+      <section id="results" class="container results-section" hidden aria-label="Analysis results">
 
-        <div class="grid-2">
-          <article class="card">
-            <header class="eyebrow pad">Distribution</header>
-            <div id="dist" class="dist"></div>
+        <!-- KPI strip -->
+        <section aria-label="Key metrics" class="metrics-strip">
+          <article class="card metric" aria-label="Overall sentiment">
+            <header><h3 class="eyebrow">Overall Sentiment</h3></header>
+            <p class="metric-value" id="m-sent"></p>
           </article>
-          <article class="card">
-            <header class="eyebrow pad">Themes</header>
-            <div id="themes" class="themes"></div>
+          <article class="card metric" aria-label="Average score">
+            <header><h3 class="eyebrow">Avg Score (−1 to 1)</h3></header>
+            <p class="metric-value" id="m-score"></p>
           </article>
-        </div>
+          <article class="card metric" aria-label="Entries analyzed">
+            <header><h3 class="eyebrow">Entries Analyzed</h3></header>
+            <p class="metric-value" id="m-count"></p>
+          </article>
+          <article class="card metric" aria-label="Positive rate">
+            <header><h3 class="eyebrow">Positive Rate</h3></header>
+            <p class="metric-value" id="m-posrate"></p>
+          </article>
+          <article class="card metric" aria-label="Average confidence">
+            <header><h3 class="eyebrow">Avg Confidence</h3></header>
+            <p class="metric-value" id="m-conf"></p>
+          </article>
+        </section>
 
-        <article class="card report">
-          <header class="eyebrow">Insights Report</header>
-          <h2 id="summary" class="serif"></h2>
-          <div class="grid-2 report-cols">
-            <section>
-              <header class="eyebrow">Key Insights</header>
+        <!-- Charts row 1: Pie + Score histogram + Confidence bars -->
+        <section class="chart-row" aria-label="Distribution charts">
+
+          <article class="card chart-card" aria-labelledby="dist-heading">
+            <header class="card-header">
+              <h3 id="dist-heading" class="eyebrow">Sentiment Distribution</h3>
+            </header>
+            <figure id="pie-figure" class="pie-figure" aria-label="Pie chart of sentiment distribution">
+              <svg id="pie-svg" viewBox="0 0 220 220" width="220" height="220" role="img" aria-labelledby="pie-title">
+                <title id="pie-title">Sentiment distribution pie chart</title>
+              </svg>
+              <figcaption id="pie-legend" class="pie-legend" aria-live="polite"></figcaption>
+            </figure>
+          </article>
+
+          <article class="card chart-card" aria-labelledby="histogram-heading">
+            <header class="card-header">
+              <h3 id="histogram-heading" class="eyebrow">Score Distribution</h3>
+              <p class="chart-sub">How scores cluster from −1 to +1</p>
+            </header>
+            <figure id="histogram-figure" class="histogram-figure" aria-label="Bar chart of score distribution">
+              <svg id="histogram-svg" viewBox="0 0 320 160" width="100%" height="160" role="img" aria-labelledby="hist-title">
+                <title id="hist-title">Score distribution histogram</title>
+              </svg>
+            </figure>
+          </article>
+
+          <article class="card chart-card" aria-labelledby="conf-heading">
+            <header class="card-header">
+              <h3 id="conf-heading" class="eyebrow">Confidence by Sentiment</h3>
+              <p class="chart-sub">Average model confidence per label</p>
+            </header>
+            <figure id="conf-figure" class="conf-figure" aria-label="Bar chart showing confidence by sentiment">
+              <div id="conf-bars"></div>
+            </figure>
+          </article>
+
+        </section>
+
+        <!-- Charts row 2: Themes + Emotions -->
+        <section class="chart-row chart-row--2" aria-label="Theme and emotion analysis">
+
+          <article class="card chart-card chart-card--wide" aria-labelledby="themes-heading">
+            <header class="card-header">
+              <h3 id="themes-heading" class="eyebrow">Top Themes</h3>
+              <p class="chart-sub">Recurring topics ranked by mentions</p>
+            </header>
+            <figure id="themes-figure" aria-label="Ranked list of themes">
+              <ol id="themes" class="themes-list"></ol>
+            </figure>
+          </article>
+
+          <article class="card chart-card" aria-labelledby="emotions-heading">
+            <header class="card-header">
+              <h3 id="emotions-heading" class="eyebrow">Emotion Cloud</h3>
+              <p class="chart-sub">Emotions across all entries</p>
+            </header>
+            <figure id="emotions-figure" aria-label="Emotion frequency cloud">
+              <div id="emotion-cloud" class="emotion-cloud"></div>
+            </figure>
+          </article>
+
+        </section>
+
+        <!-- Score timeline (sparkline) -->
+        <article class="card chart-card chart-card--full" aria-labelledby="timeline-heading">
+          <header class="card-header">
+            <h3 id="timeline-heading" class="eyebrow">Score Timeline</h3>
+            <p class="chart-sub">Sentiment score across entries in order</p>
+          </header>
+          <figure aria-label="Line chart of sentiment scores over entries">
+            <svg id="timeline-svg" viewBox="0 0 900 120" width="100%" height="120" role="img" aria-labelledby="timeline-title" preserveAspectRatio="none">
+              <title id="timeline-title">Sentiment score timeline</title>
+            </svg>
+          </figure>
+        </article>
+
+        <!-- Insights report -->
+        <article class="card report" aria-labelledby="report-heading">
+          <header>
+            <h2 id="report-heading" class="eyebrow">Insights Report</h2>
+            <p id="summary" class="report-summary serif"></p>
+          </header>
+          <div class="report-cols">
+            <section aria-labelledby="insights-heading">
+              <h3 id="insights-heading" class="eyebrow">Key Insights</h3>
               <ol id="insights" class="numbered"></ol>
             </section>
-            <section>
-              <header class="eyebrow">Recommendations</header>
+            <section aria-labelledby="recs-heading">
+              <h3 id="recs-heading" class="eyebrow">Recommendations</h3>
               <ul id="recommendations" class="bullets"></ul>
             </section>
           </div>
         </article>
 
-        <article class="card">
-          <header class="eyebrow pad">Per‑entry breakdown</header>
-          <div id="items" class="items"></div>
+        <!-- Per-entry breakdown -->
+        <article class="card" aria-labelledby="breakdown-heading">
+          <header class="card-header">
+            <h3 id="breakdown-heading" class="eyebrow">Per‑entry Breakdown</h3>
+            <div class="filter-row" role="group" aria-label="Filter entries by sentiment">
+              <button class="filter-btn active" data-filter="all" type="button">All</button>
+              <button class="filter-btn" data-filter="positive" type="button">Positive</button>
+              <button class="filter-btn" data-filter="neutral" type="button">Neutral</button>
+              <button class="filter-btn" data-filter="negative" type="button">Negative</button>
+            </div>
+          </header>
+          <ol id="items" class="items-list"></ol>
         </article>
+
       </section>
     </main>
 
-    <div id="toast" class="toast" hidden></div>
+    <div id="toast" class="toast" hidden role="alert" aria-live="assertive"></div>
 
-    <footer class="site-footer">
-      <div class="container row small muted">
-        <div>Sentic — Sentiment Analysis Tool</div>
+    <footer class="site-footer" role="contentinfo">
+      <div class="container footer-inner">
+        <small>Sentic — Sentiment Analysis Tool</small>
       </div>
     </footer>
 
