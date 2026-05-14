@@ -92,4 +92,4 @@ python server.py
 
 ---
 
-MIT License · Built with [DeepSeek](https://deepseek.com/) · Hosted on [Render](https://render.com)
+MIT License
