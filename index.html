@@ -1,19 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentiment analyzer</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <nav class="navbar">
-        <h1>Sentiment analyzer</h1>
-    </nav>
-    <section class="container">
-        <h2>Enter text to analyze</h2>
-        <input id="textinput" type="text" placeholder="Enter your text here">
-        <button id="analyzebtn">Analyze Sentiment</button>
-    </section>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentic — AI Sentiment Analysis & Insights</title>
+    <meta
+      name="description"
+      content="Analyze customer feedback, reviews, and social posts. Get sentiment scores, themes, and actionable insights powered by DeepSeek."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container row">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">✦</div>
+          <div>
+            <div class="brand-name">Sentic</div>
+            <div class="brand-tag">Sentiment · Insights</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="container hero">
+        <h1>
+          Read the room.<br />
+          <span class="italic muted">Then act on it.</span>
+        </h1>
+        <p class="lede">
+          Drop in reviews, survey responses, tweets, or transcripts — one per line.
+          Get per-item sentiment scores, recurring themes, and a written insights report.
+        </p>
+      </section>
+
+      <section class="container">
+        <article class="card panel">
+          <header class="panel-head">
+            <div class="eyebrow">Input · one entry per line</div>
+            <div>
+              <label for="sampleSelect" class="visually-hidden">Choose a sample dataset</label>
+              <select id="sampleSelect" style="background: transparent; border: 1px solid var(--rule); padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--muted);">
+                <option value="default">📋 Default sample</option>
+                <option value="ecommerce">🛍️ E‑commerce reviews</option>
+                <option value="software">💻 Software feedback</option>
+                <option value="hotel">🏨 Hotel reviews</option>
+                <option value="employee">🧑‍💼 Employee survey</option>
+                <option value="social">📱 Social media comments</option>
+              </select>
+            </div>
+          </header>
+          <textarea
+            id="input"
+            placeholder="Paste reviews, feedback, or social posts. One per line."
+          ></textarea>
+          <footer class="panel-foot">
+            <div class="muted small" id="counter">0 entries</div>
+            <button id="run" class="btn-primary">Run analysis →</button>
+          </footer>
+        </article>
+      </section>
+
+      <section class="container" id="results" hidden>
+        <ul class="metrics" style="list-style: none; padding: 0;">
+          <li class="card metric">
+            <div class="eyebrow">Overall Sentiment</div>
+            <div class="metric-value" id="m-sent"></div>
+          </li>
+          <li class="card metric">
+            <div class="eyebrow">Avg Score (-1 to 1)</div>
+            <div class="metric-value" id="m-score"></div>
+          </li>
+          <li class="card metric">
+            <div class="eyebrow">Entries Analyzed</div>
+            <div class="metric-value" id="m-count"></div>
+          </li>
+        </ul>
+
+        <div class="grid-2">
+          <article class="card">
+            <header class="eyebrow pad">Distribution</header>
+            <div id="dist" class="dist"></div>
+          </article>
+          <article class="card">
+            <header class="eyebrow pad">Themes</header>
+            <div id="themes" class="themes"></div>
+          </article>
+        </div>
+
+        <article class="card report">
+          <header class="eyebrow">Insights Report</header>
+          <h2 id="summary" class="serif"></h2>
+          <div class="grid-2 report-cols">
+            <section>
+              <header class="eyebrow">Key Insights</header>
+              <ol id="insights" class="numbered"></ol>
+            </section>
+            <section>
+              <header class="eyebrow">Recommendations</header>
+              <ul id="recommendations" class="bullets"></ul>
+            </section>
+          </div>
+        </article>
+
+        <article class="card">
+          <header class="eyebrow pad">Per‑entry breakdown</header>
+          <div id="items" class="items"></div>
+        </article>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <footer class="site-footer">
+      <div class="container row small muted">
+        <div>Sentic — Sentiment Analysis Tool</div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
 </html>
