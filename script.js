@@ -1100,7 +1100,7 @@ async function exportPdf(d, btn) {
     const kH       = 64;
 
     const kpis = [
-      { label: "Overall Sentiment", value: domSent,             color: sentRgb(domSent) },
+      { label: "Sentiment", value: domSent,             color: sentRgb(domSent) },
       { label: "Average Score",     value: (avgScore >= 0 ? "+" : "") + avgScore.toFixed(2), color: C.ink },
       { label: "Total Entries",     value: String(total),       color: C.ink },
       { label: "Positive Rate",     value: posRate + "%",       color: C.positive },
