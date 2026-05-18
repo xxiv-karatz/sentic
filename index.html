@@ -122,6 +122,7 @@
           <article class="card chart-card" aria-labelledby="dist-heading">
             <header class="card-header">
               <h3 id="dist-heading" class="eyebrow">Sentiment Distribution</h3>
+              <p class="chart-sub">% of entries per sentiment label</p>
             </header>
             <figure id="pie-figure" class="pie-figure" aria-label="Pie chart of sentiment distribution">
               <svg id="pie-svg" viewBox="0 0 220 220" width="220" height="220" role="img" aria-labelledby="pie-title">
@@ -134,7 +135,7 @@
           <article class="card chart-card" aria-labelledby="histogram-heading">
             <header class="card-header">
               <h3 id="histogram-heading" class="eyebrow">Score Distribution</h3>
-              <p class="chart-sub">How scores cluster from −1 to +1</p>
+              <p class="chart-sub">Entries per score band · amber line = mean</p>
             </header>
             <figure id="histogram-figure" class="histogram-figure" aria-label="Bar chart of score distribution">
               <svg id="histogram-svg" viewBox="0 0 320 160" width="100%" height="160" role="img" aria-labelledby="hist-title">
@@ -146,7 +147,7 @@
           <article class="card chart-card" aria-labelledby="conf-heading">
             <header class="card-header">
               <h3 id="conf-heading" class="eyebrow">Confidence by Sentiment</h3>
-              <p class="chart-sub">Average model confidence per label</p>
+              <p class="chart-sub">Avg bar + individual entry dots per label</p>
             </header>
             <figure id="conf-figure" class="conf-figure" aria-label="Bar chart showing confidence by sentiment">
               <div id="conf-bars"></div>
@@ -183,8 +184,8 @@
         <!-- Score timeline (sparkline) -->
         <article class="card chart-card chart-card--full" aria-labelledby="timeline-heading">
           <header class="card-header">
-            <h3 id="timeline-heading" class="eyebrow">Score Timeline</h3>
-            <p class="chart-sub">Sentiment score across entries in order</p>
+            <h3 id="timeline-heading" class="eyebrow">Sentiment Momentum</h3>
+            <p class="chart-sub">Score per entry (dots) with 3-point rolling average</p>
           </header>
           <figure aria-label="Line chart of sentiment scores over entries">
             <svg id="timeline-svg" viewBox="0 0 900 120" width="100%" height="120" role="img" aria-labelledby="timeline-title" preserveAspectRatio="none">
