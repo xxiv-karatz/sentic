@@ -2,6 +2,7 @@
    Sentic — script.js
    Improved: better histogram, confidence chart, momentum
    chart, and 25-entry realistic sample datasets.
+   Fixed: PDF export height calculations (no lineHeightFactor)
    ========================================================= */
 
 // ========== Sample Datasets (25 entries each) ==========
@@ -208,6 +209,16 @@ sampleSelect.addEventListener("change", () => {
 input.addEventListener("input", updateCounter);
 runBtn.addEventListener("click", analyze);
 
+// Export PDF — disabled until analysis completes
+const exportBtn = document.getElementById("exportPdf");
+if (exportBtn) {
+  exportBtn.disabled = true;
+  exportBtn.addEventListener("click", async function() {
+    if (!window._senticLastData || this.disabled) return;
+    await exportPdf(window._senticLastData, this);
+  });
+}
+
 function updateCounter() {
   const n = input.value.split("\n").filter((l) => l.trim()).length;
   counter.textContent = `${n} ${n === 1 ? "entry" : "entries"}`;
@@ -238,6 +249,7 @@ async function analyze() {
 
   runBtn.disabled = true;
   runBtn.innerHTML = `<span class="spin"></span>Analyzing`;
+  if (exportBtn) exportBtn.disabled = true;
   results.hidden = true;
 
   try {
@@ -260,6 +272,8 @@ async function analyze() {
 // ========== Render ==========
 function render(d) {
   results.hidden = false;
+  if (window._setPdfData) window._setPdfData(d);
+  if (exportBtn) exportBtn.disabled = false;
 
   const counts = { positive: 0, neutral: 0, negative: 0 };
   d.items.forEach((i) => { counts[i.sentiment] = (counts[i.sentiment] || 0) + 1; });
@@ -382,8 +396,6 @@ function renderPie(counts, total) {
 }
 
 // ========== Score Histogram (improved) ==========
-// Colour-coded zones, count labels on bars, mean indicator,
-// horizontal grid lines, and cleaner axis annotations.
 function renderHistogram(items) {
   const svg = $("#histogram-svg");
   const W = 320, H = 220, padL = 32, padB = 30, padT = 14, padR = 12;
@@ -414,7 +426,7 @@ function renderHistogram(items) {
 
   const yOf = (count) => H - padB - (count / maxB) * (H - padB - padT);
 
-  // Horizontal grid lines at 25 / 50 / 75 / 100 % of max
+  // Horizontal grid lines
   [0.25, 0.5, 0.75, 1].forEach((frac) => {
     const y = H - padB - frac * (H - padB - padT);
     svg.appendChild(svgEl("line", {
@@ -469,13 +481,11 @@ function renderHistogram(items) {
       rect.style.filter = "";
     });
 
-    // Tooltip
     const title = document.createElementNS(ns, "title");
     title.textContent = `${count} entr${count === 1 ? "y" : "ies"} in range [${(binCenter - 0.1).toFixed(1)}, ${(binCenter + 0.1).toFixed(1)}]`;
     rect.appendChild(title);
     svg.appendChild(rect);
 
-    // Count label on bar
     if (barH > 14) {
       svg.appendChild(svgEl("text", {
         x: x + bw / 2, y: y - 3,
@@ -485,7 +495,7 @@ function renderHistogram(items) {
     }
   });
 
-  // Mean indicator line + label
+  // Mean indicator
   const meanX = padL + ((meanSc + 1) / 2) * (W - padL - padR);
   svg.appendChild(svgEl("line", {
     x1: meanX, y1: padT, x2: meanX, y2: H - padB,
@@ -496,7 +506,7 @@ function renderHistogram(items) {
     "font-size": "7.5", fill: "var(--accent)", "font-family": "var(--mono)",
   }, `avg ${meanSc >= 0 ? "+" : ""}${meanSc.toFixed(2)}`));
 
-  // X-axis numeric labels
+  // X-axis labels
   [[-1, "\u22121"], [-0.5, "\u22120.5"], [0.5, "+0.5"], [1, "+1"]].forEach(([v, label]) => {
     const x = padL + ((v + 1) / 2) * (W - padL - padR);
     svg.appendChild(svgEl("text", {
@@ -506,7 +516,7 @@ function renderHistogram(items) {
     }, label));
   });
 
-  // Zone annotations below numeric labels
+  // Zone annotations
   [
     [padL + (W - padL - padR) * 0.12, "negative", "var(--negative)"],
     [padL + (W - padL - padR) * 0.88, "positive", "var(--positive)"],
@@ -519,9 +529,7 @@ function renderHistogram(items) {
   });
 }
 
-// ========== Confidence Chart (improved) ==========
-// Per-sentiment: avg bar with individual entry dots overlaid
-// as a strip plot — shows spread, not just the average.
+// ========== Confidence Chart ==========
 function renderConfidenceChart(items) {
   const container = $("#conf-bars");
   const labels    = ["positive", "neutral", "negative"];
@@ -540,13 +548,11 @@ function renderConfidenceChart(items) {
     const cnt   = arr.length;
     const color = `var(--${k === "positive" ? "positive" : k === "negative" ? "negative" : "neutral"})`;
 
-    // Individual dots — clamped to [0, 100%] left position
     const dots = arr.map((v) => {
       const left = Math.max(0, Math.min(100, v * 100)).toFixed(1);
       return `<span class="conf-dot" style="left:${left}%;background:${color}" title="${Math.round(v*100)}% confidence"></span>`;
     }).join("");
 
-    // Low/high spread info
     const minV = arr.length ? Math.min(...arr) : 0;
     const maxV = arr.length ? Math.max(...arr) : 0;
     const spread = arr.length > 1
@@ -579,11 +585,6 @@ function renderConfidenceChart(items) {
 }
 
 // ========== Sentiment Momentum Chart ==========
-// Replaces the plain sparkline with a proper analytical chart:
-// • Shaded positive/negative fill zones
-// • Rolling 3-entry average line (amber)
-// • Individual coloured dots per entry with hover tooltips
-// • Y axis: +1 / 0 / -1 with grid lines; X axis: entry numbers
 function renderMomentumChart(items) {
   const svg = $("#timeline-svg");
   const W = 900, H = 120, padL = 34, padR = 14, padT = 14, padB = 28;
@@ -606,7 +607,6 @@ function renderMomentumChart(items) {
   const yScale = (v) => padT + ((1 - (v + 1) / 2)) * plotH;
   const zy     = yScale(0);
 
-  // Defs: gradients + clipPaths
   const defs = svgEl("defs", {});
   defs.innerHTML = `
     <linearGradient id="tl-pos-grad" x1="0" y1="0" x2="0" y2="1">
@@ -621,7 +621,7 @@ function renderMomentumChart(items) {
     <clipPath id="clip-below"><rect x="${padL}" y="${zy}" width="${plotW}" height="${Math.max(0, padT + plotH - zy)}"/></clipPath>`;
   svg.appendChild(defs);
 
-  // Y-axis grid lines + labels
+  // Y-axis grid lines
   [[-1, "\u22121"], [0, "0"], [1, "+1"]].forEach(([v, lbl]) => {
     const y = yScale(v);
     svg.appendChild(svgEl("line", {
@@ -637,7 +637,7 @@ function renderMomentumChart(items) {
     }, lbl));
   });
 
-  // Zone labels (right edge)
+  // Zone labels
   svg.appendChild(svgEl("text", {
     x: W - padR - 2, y: padT + 9,
     "text-anchor": "end", "font-size": "7.5",
@@ -649,7 +649,7 @@ function renderMomentumChart(items) {
     fill: "var(--negative)", opacity: "0.55", "font-family": "var(--mono)",
   }, "negative"));
 
-  // Rolling average (window = min(3, n))
+  // Rolling average
   const WINDOW = Math.min(3, n);
   const rollingAvg = items.map((_, i) => {
     const slice = items.slice(Math.max(0, i - WINDOW + 1), i + 1);
@@ -659,7 +659,7 @@ function renderMomentumChart(items) {
   const avgPts = rollingAvg.map((v, i) => [xScale(i), yScale(v)]);
   const lineD  = "M " + avgPts.map(([x, y]) => `${x},${y}`).join(" L ");
 
-  // Area fill above zero
+  // Area fill
   const areaD = `M ${avgPts[0][0]},${zy} ` +
     avgPts.map(([x, y]) => `L ${x},${y}`).join(" ") +
     ` L ${avgPts[avgPts.length-1][0]},${zy} Z`;
@@ -673,7 +673,6 @@ function renderMomentumChart(items) {
     "stroke-linejoin": "round", "stroke-linecap": "round",
   }));
 
-  // "3-pt avg" label at last point
   const last = avgPts[avgPts.length - 1];
   svg.appendChild(svgEl("text", {
     x: last[0] + 5, y: last[1] + 3.5,
@@ -706,7 +705,7 @@ function renderMomentumChart(items) {
     svg.appendChild(dot);
   });
 
-  // X-axis entry labels
+  // X-axis labels
   const step = Math.max(1, Math.ceil(n / 8));
   const shown = new Set();
   for (let i = 0; i < n; i += step) {
@@ -717,7 +716,6 @@ function renderMomentumChart(items) {
       fill: "currentColor", opacity: "0.35", "font-family": "var(--mono)",
     }, String(i + 1)));
   }
-  // Always show last
   if (!shown.has(n - 1)) {
     svg.appendChild(svgEl("text", {
       x: xScale(n - 1), y: H - 8,
@@ -825,4 +823,668 @@ function getCssVar(sentimentKey) {
     negative: "var(--negative)",
   };
   return map[sentimentKey] || "var(--muted)";
+}
+
+// ========== PDF Export (FIXED - all boxes properly measured) ==========
+window._setPdfData = function(d) { window._senticLastData = d; };
+
+async function exportPdf(d, btn) {
+  if (!window.jspdf) return toast("PDF library not loaded yet.", true);
+  const { jsPDF } = window.jspdf;
+
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin"></span> Generating…`;
+
+  await new Promise(r => setTimeout(r, 60));
+
+  try {
+    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+    const PW = doc.internal.pageSize.getWidth();   // 595.28
+    const PH = doc.internal.pageSize.getHeight();  // 841.89
+    const ML = 48;
+    const MR = 48;
+    const CW = PW - ML - MR;
+
+    // Palette
+    const C = {
+      paper:    [250, 247, 240],
+      ink:      [24,  22,  18],
+      muted:    [120, 114,  98],
+      rule:     [218, 211, 196],
+      accent:   [212, 134,  30],
+      positive: [ 38, 120,  74],
+      neutral:  [130, 120,  94],
+      negative: [178,  52,  32],
+      card:     [255, 253, 248],
+      header:   [ 24,  22,  18],
+      white:    [255, 255, 255],
+    };
+    const sentRgb = s => ({ positive: C.positive, neutral: C.neutral, negative: C.negative }[s] || C.muted);
+
+    // Line heights per font size (pt) - consistent, no lineHeightFactor
+    const getLineHeight = (fontSize) => Math.max(12, fontSize * 1.4);
+    
+    const HEADER_H    = 72;
+    const FOOTER_H    = 40;
+    const PAGE_TOP    = HEADER_H + 28;
+    const CONT_TOP    = 44;
+    const SAFE_BOTTOM = PH - FOOTER_H - 16;
+    const SECTION_GAP = 28;
+    const PARA_GAP    = 10;
+
+    let y       = PAGE_TOP;
+    let pageNum = 1;
+
+    const font = (style, size, color) => {
+      doc.setFont("helvetica", style);
+      doc.setFontSize(size);
+      doc.setCharSpace(0);
+      if (color) doc.setTextColor(...color);
+    };
+
+    const pageBg = () => {
+      doc.setFillColor(...C.paper);
+      doc.rect(0, 0, PW, PH, "F");
+    };
+
+    const hRule = (yy, x1 = ML, x2 = PW - MR, w = 0.5, color = C.rule) => {
+      doc.setDrawColor(...color);
+      doc.setLineWidth(w);
+      doc.line(x1, yy, x2, yy);
+    };
+
+    const textHeight = (text, maxW, size) => {
+      doc.setFontSize(size);
+      const lines = doc.splitTextToSize(String(text ?? ""), maxW);
+      return lines.length * getLineHeight(size);
+    };
+
+    const drawText = (text, x, yy, maxW, size, style, color, align = "left") => {
+      font(style, size, color);
+      const lines = doc.splitTextToSize(String(text ?? ""), maxW);
+      const lh = getLineHeight(size);
+      lines.forEach((ln, i) => doc.text(ln, x, yy + i * lh, { align }));
+      return yy + lines.length * lh;
+    };
+
+    const need = pts => { if (y + pts > SAFE_BOTTOM) addPage(); };
+
+    const drawPageHeader = () => {
+      doc.setFillColor(...C.header);
+      doc.rect(0, 0, PW, HEADER_H, "F");
+      doc.setFillColor(...C.accent);
+      doc.rect(0, HEADER_H - 3, PW, 3, "F");
+    };
+
+    const drawPageFooter = () => {
+      doc.setFillColor(...C.paper);
+      doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, "F");
+      hRule(PH - FOOTER_H + 1, 0, PW, 0.5, C.rule);
+      font("normal", 7.5, C.muted);
+      doc.text("Sentic — Sentiment Analysis Report", ML, PH - 14);
+      doc.text(`Page ${pageNum}`, PW - MR, PH - 14, { align: "right" });
+      if (pageNum === 1) {
+        doc.text(dateStr, PW / 2, PH - 14, { align: "center" });
+      }
+    };
+
+    const addPage = () => {
+      drawPageFooter();
+      doc.addPage();
+      pageNum++;
+      pageBg();
+      doc.setFillColor(...C.header);
+      doc.rect(0, 0, PW, 28, "F");
+      doc.setFillColor(...C.accent);
+      doc.rect(0, 25, PW, 3, "F");
+      font("normal", 7.5, [200, 195, 185]);
+      doc.text("Sentic — Sentiment Analysis Report", ML, 18);
+      y = CONT_TOP;
+    };
+
+    const sectionHead = (label, extraY = 0) => {
+      y += extraY;
+      need(32);
+      hRule(y, ML, PW - MR, 0.5, C.rule);
+      y += 14;
+      font("bold", 7, C.muted);
+      doc.setCharSpace(2.0);
+      doc.text(label.toUpperCase(), ML, y);
+      doc.setCharSpace(0);
+      y += 14;
+    };
+
+    const bar = (x, yy, w, pct, color, h = 8) => {
+      doc.setFillColor(...C.rule);
+      doc.roundedRect(x, yy, w, h, 2, 2, "F");
+      const fill = w * Math.min(Math.max(pct, 0), 1);
+      if (fill > 2) {
+        doc.setFillColor(...color);
+        doc.roundedRect(x, yy, fill, h, 2, 2, "F");
+      }
+    };
+
+    const sentPill = (label, x, yy) => {
+      const col = sentRgb(label);
+      const bg  = col.map(v => Math.min(255, v + 148));
+      font("bold", 7.5, col);
+      const tw = doc.getTextWidth(label.toUpperCase()) + 14;
+      doc.setFillColor(...bg);
+      doc.roundedRect(x, yy - 8, tw, 12, 3, 3, "F");
+      doc.text(label.toUpperCase(), x + 7, yy + 1);
+      return tw;
+    };
+
+    const kpiCard = (label, value, x, yy, w, h, valColor) => {
+      doc.setFillColor(...C.card);
+      doc.roundedRect(x, yy, w, h, 5, 5, "F");
+      doc.setDrawColor(...C.rule);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(x, yy, w, h, 5, 5, "S");
+      doc.setFillColor(...C.accent);
+      doc.roundedRect(x, yy, w, 4, 2, 2, "F");
+      doc.rect(x, yy + 2, w, 2, "F");
+      font("bold", 6.5, C.muted);
+      doc.setCharSpace(1.2);
+      const llines = doc.splitTextToSize(label.toUpperCase(), w - 16);
+      doc.text(llines, x + 8, yy + 17);
+      doc.setCharSpace(0);
+      let vs = 18;
+      font("bold", vs, valColor || C.ink);
+      while (doc.getTextWidth(String(value)) > w - 16 && vs > 9) {
+        vs -= 0.5;
+        doc.setFontSize(vs);
+      }
+      doc.text(String(value), x + 8, yy + h - 12);
+    };
+
+    // Pre-compute
+    const counts = { positive: 0, neutral: 0, negative: 0 };
+    d.items.forEach(it => { counts[it.sentiment] = (counts[it.sentiment] || 0) + 1; });
+    const total   = d.items.length || 1;
+    const avgConf = Math.round(d.items.reduce((s, it) => s + (it.confidence || 0), 0) / total * 100);
+    const posRate = Math.round((counts.positive / total) * 100);
+    const domSent = d.overall?.dominantSentiment || "neutral";
+    const avgScore = Number(d.overall?.averageScore ?? 0);
+    const now     = new Date();
+    const dateStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    // ================================================================
+    // PAGE 1
+    // ================================================================
+    pageBg();
+    drawPageHeader();
+
+    let faviconDataUrl = null;
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const cv = document.createElement("canvas");
+          cv.width = cv.height = 64;
+          cv.getContext("2d").drawImage(img, 0, 0, 64, 64);
+          faviconDataUrl = cv.toDataURL("image/png");
+        } catch(e) {}
+        resolve();
+      };
+      img.onerror = () => resolve();
+      img.crossOrigin = "anonymous";
+      img.src = "/favicon.ico";
+    });
+
+    const LOGO_SIZE = 38;
+    const LOGO_Y    = (HEADER_H - LOGO_SIZE) / 2 - 2;
+
+    if (faviconDataUrl) {
+      doc.addImage(faviconDataUrl, "PNG", ML, LOGO_Y, LOGO_SIZE, LOGO_SIZE);
+    } else {
+      doc.setFillColor(...C.accent);
+      doc.roundedRect(ML, LOGO_Y, LOGO_SIZE, LOGO_SIZE, 6, 6, "F");
+      font("bold", 22, C.header);
+      doc.text("S", ML + 11, LOGO_Y + 26);
+    }
+
+    const textX = ML + LOGO_SIZE + 14;
+    font("bold", 20, C.white);
+    doc.text("Sentic", textX, LOGO_Y + 16);
+    font("normal", 9, [190, 185, 172]);
+    doc.text("Sentiment Analysis Report", textX, LOGO_Y + 30);
+
+    font("normal", 8.5, [190, 185, 172]);
+    doc.text("Generated " + dateStr, PW - MR, LOGO_Y + 16, { align: "right" });
+    font("normal", 8, [150, 145, 132]);
+    doc.text(`${total} entr${total === 1 ? "y" : "ies"} analysed`, PW - MR, LOGO_Y + 30, { align: "right" });
+
+    // Executive Summary box
+    const summaryText = d.overall?.summary || "";
+    const SUMMARY_FS  = 10;
+    const SUMMARY_LH  = getLineHeight(SUMMARY_FS);
+    
+    doc.setFontSize(SUMMARY_FS);
+    const summaryLines = doc.splitTextToSize(summaryText, CW - 36);
+    const SUMMARY_PAD_TOP    = 36;
+    const SUMMARY_PAD_BOTTOM = 16;
+    const summaryBoxH = Math.max(72, SUMMARY_PAD_TOP + summaryLines.length * SUMMARY_LH + SUMMARY_PAD_BOTTOM);
+
+    need(summaryBoxH + 10);
+
+    doc.setFillColor(...C.card);
+    doc.roundedRect(ML, y, CW, summaryBoxH, 6, 6, "F");
+    doc.setDrawColor(...C.rule);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(ML, y, CW, summaryBoxH, 6, 6, "S");
+    doc.setFillColor(...C.accent);
+    doc.roundedRect(ML, y, 5, summaryBoxH, 3, 3, "F");
+    doc.rect(ML + 2, y, 3, summaryBoxH, "F");
+
+    font("bold", 7, C.muted);
+    doc.setCharSpace(1.8);
+    doc.text("EXECUTIVE SUMMARY", ML + 16, y + 17);
+    doc.setCharSpace(0);
+
+    font("italic", SUMMARY_FS, C.ink);
+    let summaryY = y + SUMMARY_PAD_TOP;
+    summaryLines.forEach(ln => {
+      doc.text(ln, ML + 16, summaryY);
+      summaryY += SUMMARY_LH;
+    });
+
+    y += summaryBoxH + SECTION_GAP;
+
+    // KPI Cards
+    need(72);
+    const KPI_GAP  = 8;
+    const KPI_COLS = 5;
+    const kW       = (CW - KPI_GAP * (KPI_COLS - 1)) / KPI_COLS;
+    const kH       = 64;
+
+    const kpis = [
+      { label: "Overall Sentiment", value: domSent,             color: sentRgb(domSent) },
+      { label: "Average Score",     value: (avgScore >= 0 ? "+" : "") + avgScore.toFixed(2), color: C.ink },
+      { label: "Total Entries",     value: String(total),       color: C.ink },
+      { label: "Positive Rate",     value: posRate + "%",       color: C.positive },
+      { label: "Avg Confidence",    value: avgConf + "%",       color: C.ink },
+    ];
+    kpis.forEach((k, i) => {
+      kpiCard(k.label, k.value, ML + i * (kW + KPI_GAP), y, kW, kH, k.color);
+    });
+    y += kH + SECTION_GAP;
+
+    // Sentiment Distribution
+    sectionHead("Sentiment Distribution");
+    const distBarW = CW - 130;
+    ["positive", "neutral", "negative"].forEach(lbl => {
+      need(26);
+      const pct = counts[lbl] / total;
+      const col = sentRgb(lbl);
+
+      font("bold", 9, C.ink);
+      doc.text(lbl.charAt(0).toUpperCase() + lbl.slice(1), ML, y + 6);
+
+      bar(ML + 76, y - 1, distBarW, pct, col, 10);
+
+      font("bold", 8.5, col);
+      doc.text(
+        `${counts[lbl]}  (${Math.round(pct * 100)}%)`,
+        ML + 76 + distBarW + 10,
+        y + 6
+      );
+      y += 24;
+    });
+    y += PARA_GAP;
+
+    // Score Histogram
+    sectionHead("Score Distribution  ( −1 to +1 )");
+    need(90);
+
+    const bands      = [-1, -0.6, -0.2, 0.2, 0.6, 1.01];
+    const bandLabels = ["−1.0", "−0.6", "−0.2", "+0.2", "+0.6", "+1.0"];
+    const buckets    = new Array(bands.length - 1).fill(0);
+    d.items.forEach(item => {
+      for (let b = 0; b < bands.length - 1; b++) {
+        if (Number(item.score) >= bands[b] && Number(item.score) < bands[b + 1]) {
+          buckets[b]++;
+          break;
+        }
+      }
+    });
+    const maxBucket = Math.max(1, ...buckets);
+    const histH     = 60;
+    const slotW     = CW / buckets.length;
+
+    hRule(y + histH + 1, ML, PW - MR, 0.5, C.rule);
+
+    buckets.forEach((cnt, i) => {
+      const bh  = Math.max(cnt > 0 ? 4 : 0, (cnt / maxBucket) * histH);
+      const bx  = ML + i * slotW + 4;
+      const bw  = slotW - 8;
+      const mid = (bands[i] + bands[i + 1]) / 2;
+      const col = mid < -0.15 ? C.negative : mid > 0.15 ? C.positive : C.neutral;
+
+      doc.setFillColor(...col.map(v => Math.min(255, v + 100)));
+      doc.roundedRect(bx, y, bw, histH, 3, 3, "F");
+      if (bh > 0) {
+        doc.setFillColor(...col);
+        doc.roundedRect(bx, y + histH - bh, bw, bh, 3, 3, "F");
+      }
+      if (cnt > 0) {
+        font("bold", 8, col);
+        doc.text(String(cnt), bx + bw / 2, y + histH - bh - 5, { align: "center" });
+      }
+      font("normal", 6.5, C.muted);
+      doc.text(bandLabels[i], bx + bw / 2, y + histH + 12, { align: "center" });
+    });
+
+    const meanX = ML + ((avgScore + 1) / 2) * CW;
+    doc.setDrawColor(...C.accent);
+    doc.setLineWidth(1.5);
+    doc.line(meanX, y - 4, meanX, y + histH + 4);
+    font("bold", 7, C.accent);
+    const meanLabel  = `mean ${avgScore >= 0 ? "+" : ""}${avgScore.toFixed(2)}`;
+    const meanLabelW = doc.getTextWidth(meanLabel);
+    const meanLabelX = (meanX + 6 + meanLabelW > PW - MR) ? meanX - meanLabelW - 6 : meanX + 6;
+    doc.text(meanLabel, meanLabelX, y + 10);
+
+    y += histH + 24;
+
+    // ================================================================
+    // PAGE 2
+    // ================================================================
+    addPage();
+
+    // Top Themes
+    sectionHead("Top Themes", 0);
+    const themes   = (d.themes || []).slice(0, 12);
+    const maxMent  = Math.max(1, ...themes.map(t => t.mentions || 0));
+    const RANK_W   = 28;
+    const LABEL_W  = 175;
+    const BAR_X    = ML + RANK_W + LABEL_W + 12;
+    const BAR_W    = CW - RANK_W - LABEL_W - 60;
+    const COUNT_X  = BAR_X + BAR_W + 10;
+
+    themes.forEach((t, i) => {
+      need(24);
+      const col = sentRgb(t.sentiment);
+      const pct = (t.mentions || 0) / maxMent;
+
+      if (i % 2 === 0) {
+        doc.setFillColor(244, 241, 233);
+        doc.rect(ML, y - 10, CW, 22, "F");
+      }
+
+      font("bold", 8, C.muted);
+      doc.text(String(i + 1).padStart(2, "0"), ML + 4, y + 4);
+
+      doc.setFillColor(...col);
+      doc.circle(ML + RANK_W - 4, y, 4, "F");
+
+      font("bold", 9, C.ink);
+      const lbl1 = doc.splitTextToSize(t.label || "", LABEL_W)[0];
+      doc.text(lbl1, ML + RANK_W + 4, y + 4);
+
+      bar(BAR_X, y - 3, BAR_W, pct, col, 9);
+
+      font("bold", 8.5, col);
+      doc.text(String(t.mentions || 0), COUNT_X, y + 4);
+
+      y += 22;
+    });
+
+    y += PARA_GAP;
+
+    // Emotion Breakdown
+    sectionHead("Emotion Breakdown", 6);
+
+    const freq = {};
+    d.items.forEach(it => {
+      (it.emotions || []).forEach(e => {
+        const k = e.toLowerCase().trim();
+        if (k) freq[k] = (freq[k] || 0) + 1;
+      });
+    });
+    const sortedEmo = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 24);
+    const maxFreq   = sortedEmo[0]?.[1] || 1;
+
+    if (sortedEmo.length > 0) {
+      const CHIP_H   = 18;
+      const CHIP_GAP = 6;
+      const ROW_GAP  = 8;
+
+      let rows     = [];
+      let curRow   = [];
+      let curRowW  = 0;
+
+      sortedEmo.forEach(([word, cnt]) => {
+        const ratio = cnt / maxFreq;
+        const fs    = ratio >= 0.7 ? 10 : ratio >= 0.4 ? 9 : 8;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(fs);
+        const chipW = doc.getTextWidth(word) + 16;
+        if (curRowW + chipW > CW && curRow.length > 0) {
+          rows.push(curRow);
+          curRow  = [];
+          curRowW = 0;
+        }
+        curRow.push({ word, cnt, ratio, fs, chipW });
+        curRowW += chipW + CHIP_GAP;
+      });
+      if (curRow.length) rows.push(curRow);
+
+      rows.forEach(row => {
+        need(CHIP_H + ROW_GAP + 4);
+        let cx = ML;
+        row.forEach(({ word, ratio, fs, chipW }) => {
+          const alpha = 0.18 + ratio * 0.55;
+          const bg = C.accent.map((v, j) => Math.round(v * alpha + C.paper[j] * (1 - alpha)));
+          doc.setFillColor(...bg);
+          doc.roundedRect(cx, y - 2, chipW, CHIP_H, 4, 4, "F");
+          font("normal", fs, C.ink);
+          doc.text(word, cx + 8, y + CHIP_H - 7);
+          cx += chipW + CHIP_GAP;
+        });
+        y += CHIP_H + ROW_GAP;
+      });
+    }
+
+    y += PARA_GAP;
+
+    // Key Insights (FIXED)
+    sectionHead("Key Insights", 6);
+    const INSIGHTS_FS = 9.5;
+    const INSIGHTS_LH = getLineHeight(INSIGHTS_FS);
+    const INSIGHTS_PAD = 12;
+
+    (d.insights || []).forEach((ins, i) => {
+      const insLines = doc.splitTextToSize(ins, CW - 32);
+      const insH = INSIGHTS_PAD + insLines.length * INSIGHTS_LH;
+
+      need(insH + 6);
+
+      if (i % 2 === 0) {
+        doc.setFillColor(244, 241, 233);
+        doc.roundedRect(ML, y - 4, CW, insH, 3, 3, "F");
+      }
+
+      doc.setFillColor(...C.accent);
+      doc.circle(ML + 10, y + 5, 9, "F");
+      font("bold", 8, C.white);
+      doc.text(String(i + 1), ML + 10, y + 8.5, { align: "center" });
+
+      font("normal", INSIGHTS_FS, C.ink);
+      let insY = y + 5;
+      insLines.forEach(ln => {
+        doc.text(ln, ML + 26, insY);
+        insY += INSIGHTS_LH;
+      });
+
+      y += insH + 6;
+    });
+
+    y += PARA_GAP;
+
+    // Recommendations (FIXED)
+    sectionHead("Recommendations", 6);
+    const RECS_FS = 9.5;
+    const RECS_LH = getLineHeight(RECS_FS);
+    const RECS_PAD = 12;
+
+    (d.recommendations || []).forEach((rec, i) => {
+      const recLines = doc.splitTextToSize(rec, CW - 32);
+      const recH = RECS_PAD + recLines.length * RECS_LH;
+
+      need(recH + 6);
+
+      if (i % 2 === 0) {
+        doc.setFillColor(242, 248, 244);
+        doc.roundedRect(ML, y - 4, CW, recH, 3, 3, "F");
+      }
+
+      doc.setFillColor(...C.positive);
+      doc.roundedRect(ML, y - 2, 16, 14, 3, 3, "F");
+      font("bold", 9, C.white);
+      doc.text("→", ML + 4, y + 9);
+
+      font("normal", RECS_FS, C.ink);
+      let recY = y + 5;
+      recLines.forEach(ln => {
+        doc.text(ln, ML + 24, recY);
+        recY += RECS_LH;
+      });
+
+      y += recH + 6;
+    });
+
+    // ================================================================
+    // PAGE 3+ · Per-Entry Breakdown (FIXED)
+    // ================================================================
+    addPage();
+    sectionHead("Per-Entry Breakdown", 0);
+
+    d.items.forEach((item, idx) => {
+      // Text measurement
+      const TEXT_FS = 9.5;
+      const TEXT_LH = getLineHeight(TEXT_FS);
+      doc.setFontSize(TEXT_FS);
+      const rawTextLines = doc.splitTextToSize(item.text || "", CW - 32);
+      const clipped = rawTextLines.slice(0, 5);
+      if (rawTextLines.length > 5) clipped[4] = clipped[4].replace(/.{3}$/, "…");
+      const textH = clipped.length * TEXT_LH;
+
+      // Meta measurement
+      const META_FS = 8;
+      const META_LH = getLineHeight(META_FS);
+      
+      const emoArr = (item.emotions || []).slice(0, 6);
+      doc.setFontSize(META_FS);
+      const emoLines = emoArr.length > 0
+        ? doc.splitTextToSize(emoArr.join("  ·  "), CW - 48)
+        : [];
+      
+      const phrArr = (item.keyPhrases || []).slice(0, 4);
+      doc.setFontSize(META_FS);
+      const phrLines = phrArr.length > 0
+        ? doc.splitTextToSize(phrArr.join("  ·  "), CW - 48)
+        : [];
+
+      const META_GAP = 8;
+      const emoH = emoLines.length > 0 ? emoLines.length * META_LH + 8 : 0;
+      const phrH = phrLines.length > 0 ? phrLines.length * META_LH + 8 : 0;
+      const META_H = emoH + phrH;
+
+      const CARD_PAD   = 14;
+      const HEADER_HGT = 24;
+      const cardH = CARD_PAD + HEADER_HGT + textH + META_H + CARD_PAD;
+
+      need(cardH + 10);
+
+      const cx = ML;
+      const cy = y;
+
+      // Card shell
+      doc.setFillColor(...C.card);
+      doc.roundedRect(cx, cy, CW, cardH, 5, 5, "F");
+      doc.setDrawColor(...C.rule);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(cx, cy, CW, cardH, 5, 5, "S");
+
+      const sentCol = sentRgb(item.sentiment);
+      doc.setFillColor(...sentCol);
+      doc.roundedRect(cx, cy, 5, cardH, 3, 3, "F");
+      doc.rect(cx + 2, cy, 3, cardH, "F");
+
+      // Header row
+      const hY = cy + CARD_PAD + 8;
+
+      font("bold", 7.5, C.muted);
+      doc.text(`#${idx + 1}`, cx + 14, hY);
+
+      const pillX = cx + 34;
+      const pillW = sentPill(item.sentiment, pillX, hY);
+
+      const scoreVal = Number(item.score);
+      font("bold", 8.5, sentCol);
+      doc.text(
+        `${scoreVal >= 0 ? "+" : ""}${scoreVal.toFixed(2)}`,
+        pillX + pillW + 10,
+        hY
+      );
+
+      const confStr = `${Math.round((item.confidence || 0) * 100)}% confidence`;
+      font("normal", 7.5, C.muted);
+      doc.text(confStr, cx + CW - 10, hY, { align: "right" });
+
+      hRule(cy + CARD_PAD + 14, cx + 12, cx + CW - 12, 0.4, C.rule);
+
+      // Entry text - draw each line explicitly
+      const textY = cy + CARD_PAD + HEADER_HGT + 4;
+      font("normal", TEXT_FS, C.ink);
+      let curY = textY;
+      clipped.forEach(ln => {
+        doc.text(ln, cx + 14, curY);
+        curY += TEXT_LH;
+      });
+
+      // Meta rows
+      let metaY = textY + textH + 6;
+
+      if (emoLines.length > 0) {
+        font("bold", 7.5, C.muted);
+        doc.text("Emotions", cx + 14, metaY);
+        font("normal", META_FS, C.ink);
+        let emoY = metaY;
+        emoLines.forEach(ln => {
+          doc.text(ln, cx + 60, emoY);
+          emoY += META_LH;
+        });
+        metaY += emoLines.length * META_LH + 8;
+      }
+
+      if (phrLines.length > 0) {
+        font("bold", 7.5, C.muted);
+        doc.text("Key Phrases", cx + 14, metaY);
+        font("italic", META_FS, C.muted);
+        let phrY = metaY;
+        phrLines.forEach(ln => {
+          doc.text(ln, cx + 72, phrY);
+          phrY += META_LH;
+        });
+      }
+
+      y += cardH + 8;
+    });
+
+    drawPageFooter();
+
+    const slug = dateStr.replace(/\s+/g, "-").toLowerCase();
+    doc.save(`sentic-report-${slug}.pdf`);
+    toast("PDF exported!", false);
+
+  } catch (err) {
+    console.error("PDF export error:", err);
+    toast("Export failed: " + err.message, true);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = origHTML;
+  }
 }

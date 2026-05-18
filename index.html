@@ -9,14 +9,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="icon" type="image/png" href="/favicon.ico">
   </head>
   <body>
 
     <header class="site-header" role="banner">
       <div class="container header-inner">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span class="brand-mark" aria-hidden="true"><img src="/favicon.ico" alt="Sentic logo" class="brand-mark" width="36" height="36"></span>
           <div>
             <span class="brand-name">Sentic</span>
             <span class="brand-tag">Sentiment · Insights</span>
@@ -92,7 +92,17 @@
       <!-- Results dashboard -->
       <section id="results" class="container results-section" hidden aria-label="Analysis results">
 
-        <!-- KPI strip -->
+        <!-- Export bar -->
+        <div class="export-bar">
+          <button id="exportPdf" class="btn-export" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export PDF
+          </button>
+        </div>
+
+      <!-- KPI strip -->
         <section aria-label="Key metrics" class="metrics-strip">
           <article class="card metric" aria-label="Overall sentiment">
             <header><h3 class="eyebrow">Overall Sentiment</h3></header>
@@ -237,6 +247,8 @@
       </div>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

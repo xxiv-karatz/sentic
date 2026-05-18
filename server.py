@@ -95,7 +95,7 @@ def index():
 # Serve static files (CSS, JS) from root
 @app.route("/<path:filename>")
 def static_files(filename):
-    if filename.endswith((".css", ".js")):
+    if filename.endswith((".css", ".js", ".png", ".ico", ".svg", ".webp")):
         return send_from_directory(".", filename)
     return "Not found", 404
 
